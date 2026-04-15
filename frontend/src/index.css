@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .input-field {
+    @apply w-full p-3 bg-dark-800 border border-dark-700 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors text-white placeholder-gray-400;
+  }
+  
+  .btn-primary {
+    @apply w-full bg-primary-500 hover:bg-primary-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-dark-700 hover:bg-dark-800 border border-dark-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2;
+  }
+}

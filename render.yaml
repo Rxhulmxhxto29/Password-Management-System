@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: secure-password-manager-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false # Add your MongoDB Atlas connection string in Render Dashboard
+      - key: JWT_SECRET
+        sync: false # Add a secure random string in Render Dashboard

@@ -1,0 +1,43 @@
+{
+  "name": "secure-password-manager-desktop",
+  "version": "1.0.0",
+  "description": "Desktop version of the Secure Password Manager",
+  "main": "main.js",
+  "author": "Antigravity",
+  "scripts": {
+    "dev": "concurrently \"npm start --prefix backend\" \"npm run dev --prefix frontend\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development npx electron .\"",
+    "start": "npx electron .",
+    "build": "npm run build --prefix frontend && electron-builder --win",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.secure.vault",
+    "productName": "Secure Vault",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "frontend/public/favicon.ico"
+    },
+    "files": [
+      "main.js",
+      "backend/**/*",
+      "frontend/dist/**/*",
+      "package.json"
+    ],
+    "asar": false
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.1.1",
+    "electron-builder": "^25.1.8",
+    "electron-packager": "^17.1.2",
+    "wait-on": "^9.0.4"
+  }
+}
