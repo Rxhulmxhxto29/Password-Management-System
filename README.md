@@ -2,6 +2,9 @@
 
 > A zero-knowledge password manager where the server NEVER sees your plaintext passwords.
 
+🔗 **Live App:** [https://password-management-system-tau.vercel.app](https://password-management-system-tau.vercel.app)
+🔗 **API:** [https://password-management-system-1-jewd.onrender.com](https://password-management-system-1-jewd.onrender.com)
+
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-green)
 ![React](https://img.shields.io/badge/react-18-61dafb)
