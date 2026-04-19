@@ -1,79 +1,56 @@
-const { app, BrowserWindow } = require('electron');
-const path = require('path');
-const { fork } = require('child_process');
+import { app, BrowserWindow, shell } from 'electron';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { fork } from 'child_process';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const isDev = !app.isPackaged;
 let mainWindow;
 let backendProcess;
+
+function startBackend() {
+  if (!isDev) {
+    backendProcess = fork(join(__dirname, 'backend/server.js'), [], {
+      env: { ...process.env, PORT: '5000' },
+    });
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 800,
+    minWidth: 900,
     minHeight: 600,
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
     },
-    title: "Secure Vault - Password Manager",
-    icon: path.join(__dirname, 'frontend/public/favicon.ico')
+    icon: join(__dirname, 'frontend/public/favicon.ico'),
   });
 
-  // Load the frontend (if dev server is on, use it; otherwise use static dist)
-  const isDev = process.env.NODE_ENV === 'development';
-  const startUrl = isDev 
-    ? 'http://localhost:3000' 
-    : `file://${path.join(__dirname, 'frontend/dist/index.html')}`;
+  const url = isDev
+    ? 'http://localhost:3000'
+    : `file://${join(__dirname, 'frontend/dist/index.html')}`;
 
-  mainWindow.loadURL(startUrl);
+  mainWindow.loadURL(url);
 
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  // Open external links in default browser, not inside Electron
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
+
+  if (isDev) mainWindow.webContents.openDevTools();
 }
 
-// Start the Backend Server (fork its process)
-function startBackend() {
-    const backendPath = path.join(__dirname, 'backend/server.js');
-    console.log(`Starting backend server from: ${backendPath}`);
-    
-    // We use fork so it runs as a managed node process
-    backendProcess = fork(backendPath, [], {
-        cwd: path.join(__dirname, 'backend'),
-        env: { ...process.env, NODE_ENV: 'production' }
-    });
-
-    backendProcess.on('error', (err) => {
-        console.error('Failed to start backend:', err);
-    });
-
-    backendProcess.on('exit', (code) => {
-        console.log(`Backend process exited with code ${code}`);
-    });
-}
-
-app.on('ready', () => {
-    startBackend();
-    createWindow();
+app.whenReady().then(() => {
+  startBackend();
+  setTimeout(createWindow, isDev ? 0 : 2000);
 });
 
 app.on('window-all-closed', () => {
-    if (backendProcess) backendProcess.kill();
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
-
-app.on('activate', () => {
-    if (mainWindow === null) {
-        createWindow();
-    }
-});
-
-app.on('quit', () => {
-    if (backendProcess) backendProcess.kill();
+  if (backendProcess) backendProcess.kill();
+  if (process.platform !== 'darwin') app.quit();
 });

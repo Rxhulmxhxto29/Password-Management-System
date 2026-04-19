@@ -1,68 +1,85 @@
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Navbar from './components/Navbar';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
+import Login from './pages/Login.jsx';
+import Register from './pages/Register.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import SecurityHealth from './pages/SecurityHealth.jsx';
+import TOTPChallenge from './pages/TOTPChallenge.jsx';
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  
-  // The MasterKey is ONLY stored in memory for maximum security.
-  // Refreshing the browser will wipe it and require re-login.
-  const [masterKey, setMasterKey] = useState(null);
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, masterKey } = useAuth();
+  // Require both token AND master key (master key = vault is unlocked)
+  if (!isAuthenticated || !masterKey) return <Navigate to="/login" replace />;
+  return children;
+}
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    // We do NOT auto-login if they refresh the page, because the masterKey is gone.
-    // However, if we wanted to support a "soft session", we could check for token.
-    // For Zero-Knowledge, no masterKey means we can't show passwords. 
-    // They must re-enter their master password to derive the key again.
-  }, []);
+function PublicRoute({ children }) {
+  const { isAuthenticated, masterKey } = useAuth();
+  if (isAuthenticated && masterKey) return <Navigate to="/dashboard" replace />;
+  return children;
+}
 
-  const handleLogin = (userData, token, derivedMasterKey) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setMasterKey(derivedMasterKey); // store purely in state
-    setIsAuthenticated(true);
-    setUser(userData);
-  };
+function TOTPRoute({ children }) {
+  const { requiresTOTP } = useAuth();
+  if (!requiresTOTP) return <Navigate to="/login" replace />;
+  return children;
+}
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setMasterKey(null);
-    setIsAuthenticated(false);
-    setUser(null);
-  };
-
+function AppRoutes() {
   return (
-    <Router>
-      <div className="min-h-screen bg-dark-900 text-gray-100 flex flex-col">
-        {isAuthenticated && <Navbar user={user} onLogout={handleLogout} />}
-        
-        <main className="flex-1 flex flex-col">
-          <Routes>
-            <Route 
-              path="/login" 
-              element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} 
-            />
-            <Route 
-              path="/register" 
-              element={!isAuthenticated ? <Register onLogin={handleLogin} /> : <Navigate to="/" />} 
-            />
-            <Route 
-              path="/" 
-              element={(isAuthenticated && masterKey) ? <Dashboard masterKey={masterKey} /> : <Navigate to="/login" />} 
-            />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/totp-challenge"
+        element={
+          <TOTPRoute>
+            <TOTPChallenge />
+          </TOTPRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/security"
+        element={
+          <ProtectedRoute>
+            <SecurityHealth />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}

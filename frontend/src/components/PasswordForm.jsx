@@ -1,133 +1,231 @@
-import { useState, useEffect } from 'react';
-import { X, RefreshCcw, Loader } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import {
+  X, Eye, EyeOff, RefreshCw, Star, Loader2, ShieldAlert,
+} from 'lucide-react';
+import StrengthMeter from './StrengthMeter.jsx';
+import { generatePassword } from '../utils/crypto.js';
+import { checkPasswordBreach } from '../utils/breachCheck.js';
 
-const PasswordForm = ({ initialData, onSave, onClose }) => {
-  const [formData, setFormData] = useState({
-    site: '',
-    username: '',
-    password: ''
-  });
-  const [loading, setLoading] = useState(false);
+const CATEGORIES = [
+  { value: 'login', label: 'Login' },
+  { value: 'card', label: 'Card' },
+  { value: 'note', label: 'Secure Note' },
+  { value: 'identity', label: 'Identity' },
+];
+
+export default function PasswordForm({ entry, onSave, onClose }) {
+  const isEdit = !!entry;
+
+  const [site, setSite] = useState(entry?.site || '');
+  const [username, setUsername] = useState(entry?.username || '');
+  const [password, setPassword] = useState(entry?.decrypted?.password || '');
+  const [category, setCategory] = useState(entry?.category || 'login');
+  const [isFavourite, setIsFavourite] = useState(entry?.isFavourite || false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [breachResult, setBreachResult] = useState(null);
+  const [checkingBreach, setCheckingBreach] = useState(false);
+  const breachTimer = useRef(null);
 
+  // Close on Escape key
   useEffect(() => {
-    if (initialData) {
-      setFormData({
-        site: initialData.site || '',
-        username: initialData.username || '',
-        password: initialData.password || ''
-      });
-    }
-  }, [initialData]);
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
-  const generatePassword = () => {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
-    let password = "";
-    for (let i = 0; i < 16; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
+  // Live breach check — debounced 800ms after typing stops
+  useEffect(() => {
+    if (!password || password.length < 4) {
+      setBreachResult(null);
+      return;
     }
-    setFormData({ ...formData, password });
+    clearTimeout(breachTimer.current);
+    breachTimer.current = setTimeout(async () => {
+      setCheckingBreach(true);
+      try {
+        const result = await checkPasswordBreach(password);
+        setBreachResult(result);
+      } catch {
+        setBreachResult(null);
+      } finally {
+        setCheckingBreach(false);
+      }
+    }, 800);
+    return () => clearTimeout(breachTimer.current);
+  }, [password]);
+
+  const handleGenerate = () => {
+    setPassword(generatePassword({ length: 20 }));
+    setShowPassword(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
-    
+
+    if (!site.trim() || !username.trim() || !password) {
+      setError('All fields are required');
+      return;
+    }
+
+    setSaving(true);
     try {
-      await onSave(formData);
+      await onSave({ site: site.trim(), username: username.trim(), password, category, isFavourite });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save password');
+      setError(err.message || 'Failed to save');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-      <div className="bg-dark-800 rounded-2xl border border-dark-700 w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center p-6 border-b border-dark-700">
-          <h3 className="text-xl font-bold text-white">
-            {initialData ? 'Edit Password' : 'Add New Password'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="vault-card w-full max-w-md relative animate-in zoom-in-95 duration-200">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 text-gray-500 hover:text-gray-300"
+        >
+          <X size={18} />
+        </button>
+
+        <h2 className="text-lg font-semibold text-white mb-4">
+          {isEdit ? 'Edit item' : 'Add new item'}
+        </h2>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg text-sm text-center">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-3 py-2">
               {error}
             </div>
           )}
 
+          {/* Site */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Website or App Name</label>
+            <label className="block text-sm text-gray-400 mb-1">Site / Service</label>
             <input
               type="text"
-              className="input-field"
-              placeholder="e.g. Netflix, Google, GitHub"
-              value={formData.site}
-              onChange={(e) => setFormData({ ...formData, site: e.target.value })}
+              className="vault-input"
+              value={site}
+              onChange={(e) => setSite(e.target.value)}
+              placeholder="e.g. GitHub, Netflix"
               required
             />
           </div>
 
+          {/* Username */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Username or Email</label>
+            <label className="block text-sm text-gray-400 mb-1">Username / Email</label>
             <input
               type="text"
-              className="input-field"
-              placeholder="Your username or email"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              className="vault-input"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="e.g. user@email.com"
               required
             />
           </div>
 
+          {/* Password */}
           <div>
-            <div className="flex justify-between items-end mb-1">
-              <label className="block text-sm font-medium text-gray-400">Password</label>
-              <button 
-                type="button" 
-                onClick={generatePassword}
-                className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1 transition-colors"
+            <label className="block text-sm text-gray-400 mb-1">Password</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="vault-input pr-10 font-mono"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter or generate a password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="vault-btn-secondary shrink-0"
+                title="Generate password"
               >
-                <RefreshCcw className="w-3 h-3" /> Generate Strong
+                <RefreshCw size={16} />
               </button>
             </div>
-            <input
-              type="text"
-              className="input-field font-mono"
-              placeholder="Your secure password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
+            {password && <StrengthMeter password={password} />}
+            {/* Live breach warning */}
+            {checkingBreach && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
+                <Loader2 size={12} className="animate-spin" />
+                Checking breaches...
+              </div>
+            )}
+            {!checkingBreach && breachResult?.breached && (
+              <div className="flex items-center gap-1.5 text-xs text-red-400 mt-1 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
+                <ShieldAlert size={12} />
+                This password appeared in {breachResult.count.toLocaleString()} data breach{breachResult.count !== 1 ? 'es' : ''}
+              </div>
+            )}
           </div>
 
-          <div className="pt-4 flex gap-3">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="flex-1 py-3 px-4 rounded-lg border border-dark-600 text-gray-300 hover:bg-dark-700 transition"
-              disabled={loading}
+          {/* Category & Favourite */}
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-sm text-gray-400 mb-1">Category</label>
+              <select
+                className="vault-input"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsFavourite(!isFavourite)}
+              className={`p-2 rounded-lg border transition-colors ${
+                isFavourite
+                  ? 'border-amber-500/50 text-amber-400 bg-amber-500/10'
+                  : 'border-vault-border text-gray-500 hover:text-amber-400'
+              }`}
+              title="Toggle favourite"
             >
+              <Star size={18} fill={isFavourite ? 'currentColor' : 'none'} />
+            </button>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={onClose} className="vault-btn-secondary flex-1 justify-center">
               Cancel
             </button>
-            <button 
-              type="submit" 
-              className="flex-1 btn-primary !py-3"
-              disabled={loading}
+            <button
+              type="submit"
+              disabled={saving}
+              className="vault-btn-primary flex-1 justify-center"
             >
-              {loading ? <Loader className="w-5 h-5 animate-spin mx-auto" /> : 'Save entry'}
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save item'
+              )}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-};
-
-export default PasswordForm;
+}

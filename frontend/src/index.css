@@ -1,17 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+* { box-sizing: border-box; }
+body { background: #0f1117; color: #e6edf3; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #161b22; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
 @layer components {
-  .input-field {
-    @apply w-full p-3 bg-dark-800 border border-dark-700 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors text-white placeholder-gray-400;
+  .vault-input {
+    @apply w-full bg-vault-card border border-vault-border rounded-lg px-3 py-2 
+           text-sm text-white placeholder-gray-600 
+           focus:outline-none focus:border-vault-accent focus:ring-1 focus:ring-vault-accent;
   }
-  
-  .btn-primary {
-    @apply w-full bg-primary-500 hover:bg-primary-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  .vault-input::placeholder {
+    opacity: 1;
+  }
+  .vault-input:not(:placeholder-shown)::placeholder {
+    opacity: 0;
   }
 
-  .btn-secondary {
-    @apply px-4 py-2 bg-dark-700 hover:bg-dark-800 border border-dark-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2;
+  .vault-btn-primary {
+    @apply bg-vault-accent hover:bg-vault-accent-hover text-white font-medium 
+           px-4 py-2 rounded-lg text-sm transition-colors duration-150 
+           flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .vault-btn-secondary {
+    @apply bg-transparent border border-vault-border hover:bg-vault-card 
+           text-gray-300 font-medium px-4 py-2 rounded-lg text-sm 
+           transition-colors duration-150 flex items-center gap-2;
+  }
+
+  .vault-card {
+    @apply bg-vault-card border border-vault-border rounded-xl p-4;
   }
 }
