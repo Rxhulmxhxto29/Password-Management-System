@@ -91,19 +91,13 @@ app.use(errorHandler);
 async function connectDB() {
   const uri = process.env.MONGO_URI;
 
-  if (uri) {
-    await mongoose.connect(uri);
-    logger.info('Connected to MongoDB Atlas');
-  } else {
-    // Fallback to in-memory MongoDB for zero-config local dev / testing
-    const { MongoMemoryServer } = await import('mongodb-memory-server');
-    const mongod = await MongoMemoryServer.create({
-      binary: { version: '7.0.0' },
-      instance: { launchTimeout: 60000 },
-    });
-    await mongoose.connect(mongod.getUri());
-    logger.info('Connected to in-memory MongoDB (no MONGO_URI set)');
+  if (!uri) {
+    logger.error('MONGO_URI environment variable is not set!');
+    throw new Error('MONGO_URI is required. Please set it in your environment variables.');
   }
+
+  await mongoose.connect(uri);
+  logger.info('Connected to MongoDB Atlas');
 }
 
 // -- Start server -------------------------------------------------------------
