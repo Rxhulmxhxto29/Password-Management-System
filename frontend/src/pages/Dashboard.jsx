@@ -322,7 +322,10 @@ export default function Dashboard() {
           {stats.weakCount > 0 && (
             <BreachBanner
               count={stats.weakCount}
-              onReview={() => setSortBy('weak')}
+              onReview={() => {
+                setShowBreachReport(true);
+                setSortBy('weak');
+              }}
             />
           )}
 
